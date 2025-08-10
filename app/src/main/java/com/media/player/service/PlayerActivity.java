@@ -19,7 +19,7 @@ import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
-import com.media.player.service.databinding.ActivityPlayerBinding;
+import com.media.player.service.databinding.ActivityMainBinding;
 import com.media.player.service.utils.Config;
 import com.media.player.service.utils.DataStore;
 import com.media.player.service.utils.Preset;
@@ -27,13 +27,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerActivity extends AppCompatActivity {
-    private ActivityPlayerBinding binding;
+    private ActivityMainBinding binding;
     private static final int PERMISSION_REQUEST_CODE = 100;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        binding = ActivityPlayerBinding.inflate(getLayoutInflater());
+        binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         
         // 설정 로드
@@ -61,7 +61,7 @@ public class PlayerActivity extends AppCompatActivity {
             DataStore.saveConfig(this);
         });
         
-        // 자동 스킵 스위치
+        // 스킵 스위치
         binding.switchAutoSkip.setChecked(DataStore.bAutoSkip);
         binding.switchAutoSkip.setOnCheckedChangeListener((buttonView, isChecked) -> {
             DataStore.bAutoSkip = isChecked;
@@ -223,11 +223,33 @@ public class PlayerActivity extends AppCompatActivity {
         if (isAccessibilityServiceEnabled()) {
             DataStore.bEnabled = !DataStore.bEnabled;
             updateServiceStatus();
-            Toast.makeText(this, DataStore.bEnabled ? "재생 시작" : "재생 중지", 
-                    Toast.LENGTH_SHORT).show();
+            
+            if (DataStore.bEnabled) {
+                // 서비스 시작시 타겟 앱 실행
+                launchTargetApp();
+                Toast.makeText(this, "재생 시작", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "재생 중지", Toast.LENGTH_SHORT).show();
+            }
         } else {
             Toast.makeText(this, "먼저 보조 서비스를 활성화해주세요", Toast.LENGTH_LONG).show();
             openAccessibilitySettings();
+        }
+    }
+    
+    private void launchTargetApp() {
+        try {
+            // 타겟 앱 실행 (기사용 앱)
+            Intent launchIntent = getPackageManager().getLaunchIntentForPackage(Config.TARGET_PACKAGE);
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(launchIntent);
+            } else {
+                // 앱이 설치되지 않은 경우
+                Toast.makeText(this, "대상 앱이 설치되어 있지 않습니다", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Logger.log(e);
         }
     }
     

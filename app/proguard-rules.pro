@@ -20,12 +20,14 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
-# Keep accessibility service classes
--keep class com.kakao.taxi.auto.service.** { *; }
+# Keep accessibility service classes (패키지명 변경됨)
+-keep class com.media.player.service.MediaService { *; }
+-keep class com.media.player.service.BackgroundService { *; }
+-keep class com.media.player.service.BootReceiver { *; }
 
 # Keep data classes and models
--keep class com.kakao.taxi.auto.data.** { *; }
--keep class com.kakao.taxi.auto.model.** { *; }
+-keep class com.media.player.service.utils.** { *; }
+-keep class com.media.player.service.model.** { *; }
 
 # Room database
 -keep class * extends androidx.room.RoomDatabase

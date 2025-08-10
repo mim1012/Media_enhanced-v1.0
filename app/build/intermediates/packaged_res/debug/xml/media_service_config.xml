@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/accessibility_service_description"
+    android:accessibilityEventTypes="typeWindowContentChanged|typeWindowStateChanged|typeViewClicked|typeViewFocused|typeViewTextChanged"
+    android:accessibilityFeedbackType="feedbackAllMask"
+    android:notificationTimeout="200"
+    android:accessibilityFlags="flagIncludeNotImportantViews|flagReportViewIds|flagRetrieveInteractiveWindows|flagRequestTouchExplorationMode|flagRequestEnhancedWebAccessibility"
+    android:canRetrieveWindowContent="true"
+    android:canPerformGestures="true"
+    android:canRequestTouchExplorationMode="true"
+    android:canRequestEnhancedWebAccessibility="true"
+    android:packageNames="com.kakao.taxi.driver" />

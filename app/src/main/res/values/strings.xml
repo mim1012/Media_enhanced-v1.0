@@ -29,7 +29,7 @@
     
     <!-- Additional Settings -->
     <string name="additional_settings">추가 설정</string>
-    <string name="auto_deny">자동 건너뛰기</string>
+    <string name="auto_deny">건너뛰기</string>
     <string name="volume_control">볼륨 컨트롤</string>
     
     <!-- Templates -->

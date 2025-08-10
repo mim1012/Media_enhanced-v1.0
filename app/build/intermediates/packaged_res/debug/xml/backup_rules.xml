@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Exclude sensitive data from backup -->
+    <exclude domain="sharedpref" path="sensitive_prefs.xml" />
+    <exclude domain="database" path="automation_logs.db" />
+    <exclude domain="file" path="cache/" />
+</full-backup-content>

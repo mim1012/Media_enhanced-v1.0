@@ -117,8 +117,8 @@ public class Helper {
         }
     }
 
-    // getKakaoGeneralCall 별칭
-    public static MediaItem getKakaoGeneralCall(AccessibilityNodeInfo accessibilityNodeInfo) {
+    // getGeneralCall 별칭
+    public static MediaItem getGeneralCall(AccessibilityNodeInfo accessibilityNodeInfo) {
         return getMediaItem(accessibilityNodeInfo);
     }
 
@@ -191,12 +191,12 @@ public class Helper {
         }
     }
 
-    // getKakaoListCall 별칭들
-    public static MediaItem getKakaoListCall(AccessibilityNodeInfo a1, AccessibilityNodeInfo a2, AccessibilityNodeInfo a3) {
+    // getListCall 별칭들
+    public static MediaItem getListCall(AccessibilityNodeInfo a1, AccessibilityNodeInfo a2, AccessibilityNodeInfo a3) {
         return getListItem(a1, a2, a3);
     }
     
-    public static MediaItem getKakaoListCall(AccessibilityNodeInfo accessibilityNodeInfo) {
+    public static MediaItem getListCall(AccessibilityNodeInfo accessibilityNodeInfo) {
         return getListItem(accessibilityNodeInfo);
     }
 

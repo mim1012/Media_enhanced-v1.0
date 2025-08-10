@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.media.player.service.app-mergeDebugResources-3:/layout/dialog_save_template.xml",
+        "source": "com.media.player.service.app-main-6:/layout/dialog_save_template.xml"
+    },
+    {
+        "merged": "com.media.player.service.app-mergeDebugResources-3:/layout/activity_main.xml",
+        "source": "com.media.player.service.app-main-6:/layout/activity_main.xml"
+    }
+]

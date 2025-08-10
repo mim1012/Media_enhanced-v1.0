@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeAllMask"
+    android:accessibilityFlags="flagDefault|flagRequestTouchExplorationMode|flagRequestFilterKeyEvents|flagReportViewIds|flagIncludeNotImportantViews|flagRequestAccessibilityButton"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:notificationTimeout="10"
+    android:canRetrieveWindowContent="true"
+    android:canRequestTouchExplorationMode="true"
+    android:canRequestFilterKeyEvents="true"
+    android:canPerformGestures="true"
+    android:canTakeScreenshot="true"
+    android:description="@string/accessibility_service_description"
+    android:settingsActivity="com.kakao.taxi.auto.ui.settings.AccessibilitySettingsActivity" />

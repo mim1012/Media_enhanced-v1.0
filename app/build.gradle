@@ -6,32 +6,54 @@ plugins {
 }
 
 android {
-    compileSdk 33
+    namespace 'com.media.player.service'
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.media.player.service"
         minSdk 21
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        debug {
+            // 디버그용 기본 서명 사용
+        }
+        release {
+            // 실제 빌드시 키스토어 정보 입력 필요
+            // storeFile file('keystore.jks')
+            // storePassword 'password'
+            // keyAlias 'alias'
+            // keyPassword 'password'
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // 릴리즈 서명은 나중에 설정
+            // signingConfig signingConfigs.release
+        }
+        debug {
+            minifyEnabled false
+            debuggable true
+            signingConfig signingConfigs.debug
         }
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     buildFeatures {

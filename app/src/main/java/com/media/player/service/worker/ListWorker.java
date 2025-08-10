@@ -53,7 +53,7 @@ public class ListWorker implements Runnable {
                     String str = nodeByViewId.getText().toString() + " : " + accessibilityNodeInfo.getText().toString();
                     if (!DataStore.aProcessedList.contains(str)) {
                         DataStore.addProcessedText(str);
-                        MediaItem item = Helper.getKakaoListCall(accessibilityNodeInfo, nodeByViewId, nodeByViewId2);
+                        MediaItem item = Helper.getListCall(accessibilityNodeInfo, nodeByViewId, nodeByViewId2);
                         if (item != null) {
                             arrayList.add(DataStore.tThreadPool.submit(new WorkerThread(item, this.mContext)));
                         }

@@ -67,7 +67,7 @@
     <string name="settings_saved">설정이 저장되었습니다</string>
     
     <!-- Accessibility Service -->
-    <string name="accessibility_service_description">미디어 재생을 위한 보조 서비스입니다. 화면 내용을 읽어 더 나은 재생 경험을 제공합니다.</string>
+    <string name="accessibility_service_description">꼭 사용함으로 설정해주세요</string>
     
     <!-- Error Messages -->
     <string name="error_loading_data">데이터를 불러오는 중 오류가 발생했습니다</string>

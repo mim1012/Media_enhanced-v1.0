@@ -21,12 +21,14 @@ public class Crypto {
         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
     };
     
-    // 서버 URL (암호화되어 저장)
+    // 서버 URL (주석 처리 - 로컬 전용)
+    /*
     private static final String ENCRYPTED_SERVER_URL = "U2FsdGVkX19+5K3H8YW5xQ==";
     private static final String ENCRYPTED_AUTH_URL = "U2FsdGVkX18+7L4I9ZX6yR==";
+    */
     
     /**
-     * 텍스트 암호화
+     * 텍스트 암호화 (로컬 데이터용)
      */
     public static String encrypt(String plainText) {
         try {
@@ -62,23 +64,17 @@ public class Crypto {
         }
     }
     
-    /**
-     * 서버 URL 가져오기 (복호화)
-     */
+    // 서버 관련 메서드 (주석 처리 - 로컬 전용)
+    /*
     public static String getServerUrl() {
         // 실제로는 암호화된 URL을 복호화
-        // return decrypt(ENCRYPTED_SERVER_URL);
-        
-        // 현재는 하드코딩 (실제 구현시 위 코드 사용)
-        return "https://api.example.com";
+        return decrypt(ENCRYPTED_SERVER_URL);
     }
     
-    /**
-     * 인증 URL 가져오기
-     */
     public static String getAuthUrl() {
         return getServerUrl() + "/auth";
     }
+    */
     
     /**
      * 디바이스 ID 난독화

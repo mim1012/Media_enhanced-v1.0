@@ -117,7 +117,12 @@ public class Helper {
         }
     }
 
-    // getGeneralCall 별칭
+    // Reference와 동일한 메서드명 제공
+    public static MediaItem getKakaoGeneralCall(AccessibilityNodeInfo accessibilityNodeInfo) {
+        return getMediaItem(accessibilityNodeInfo);
+    }
+    
+    // getGeneralCall 별칭 (호환성)
     public static MediaItem getGeneralCall(AccessibilityNodeInfo accessibilityNodeInfo) {
         return getMediaItem(accessibilityNodeInfo);
     }
@@ -202,17 +207,26 @@ public class Helper {
 
     // 버튼 클릭 실행 - 핵심 비즈니스 로직 (메모리 최적화 포함)
     public static void delegateButtonClick(final AccessibilityNodeInfo accessibilityNodeInfo) {
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
+        // 인간적인 지연 시간 추가 (50-150ms)
+        int delay = new java.util.Random().nextInt(100) + 50;
+        
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
             public void run() {
                 try {
-                    accessibilityNodeInfo.performAction(16);  // ACTION_CLICK
+                    boolean success = accessibilityNodeInfo.performAction(16);  // ACTION_CLICK
+                    
+                    if (success) {
+                        Logger.log("Button clicked successfully");
+                    }
+                    
                     // 메모리 최적화 - 사용 후 즉시 recycle
                     accessibilityNodeInfo.recycle();
-                } catch (Exception unused) {
+                } catch (Exception e) {
+                    Logger.log("Click failed: " + e.getMessage());
                 }
             }
-        });
+        }, delay);
     }
     
     // 정규식 패턴 (원본 그대로)
@@ -231,12 +245,14 @@ public class Helper {
 
     // 거리 계산 - 핵심 비즈니스 로직
     public static int getCallDistance(MediaItem item) {
-        double parseDouble;
+        double parseDouble = 0;
         if (!item.mQuality.equals("")) {
             if (item.mQuality.contains("k")) {
                 parseDouble = Double.parseDouble(item.mQuality.substring(0, item.mQuality.indexOf("k")).trim());
+                return (int) (parseDouble * 1000.0d);
             } else if (item.mQuality.contains("K")) {
                 parseDouble = Double.parseDouble(item.mQuality.substring(0, item.mQuality.indexOf("K")).trim());
+                return (int) (parseDouble * 1000.0d);
             } else if (item.mQuality.contains("m")) {
                 return Integer.parseInt(item.mQuality.replace("m", "").trim());
             } else {
@@ -244,7 +260,6 @@ public class Helper {
                     return Integer.parseInt(item.mQuality.replace("M", "").trim());
                 }
             }
-            return (int) (parseDouble * 1000.0d);
         }
         return 9999;
     }
@@ -321,8 +336,13 @@ public class Helper {
         return true;
     }
     
-    // equalGeneralCalls 별칭
+    // Reference와 동일한 메서드명 제공
     public static boolean equalGeneralCalls(MediaItem item1, MediaItem item2) {
         return equalItems(item1, item2);
+    }
+    
+    // getKakaoListCall - 카카오 리스트콜 정보 추출 (MediaService에서 사용)
+    public static MediaItem getKakaoListCall(AccessibilityNodeInfo accessibilityNodeInfo) {
+        return getListItem(accessibilityNodeInfo);
     }
 }

@@ -20,7 +20,7 @@
         <item name="colorAccent">@color/colorAccent</item>
         
         <!-- Typography -->
-        <item name="android:fontFamily">@font/roboto</item>
+        <item name="android:fontFamily">sans-serif</item>
         
         <!-- Shape -->
         <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.MediaPlayer.SmallComponent</item>

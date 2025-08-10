@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(gradlew.bat clean:*)",
+      "Bash(.gradlew.bat clean)",
+      "Bash(cmd /c gradlew.bat clean:*)",
+      "Bash(dir)",
+      "Bash(./gradlew:*)",
+      "Bash(cp:*)",
+      "Bash(chmod:*)",
+      "Bash(java:*)",
+      "Bash(where java)",
+      "Bash(rm:*)",
+      "Bash(gradlew.bat assembleDebug:*)",
+      "Bash(adb:*)",
+      "WebFetch(domain:github.com)"
+    ],
+    "deny": []
+  }
+}

@@ -56,7 +56,7 @@ public class BackgroundService extends Service {
     private void startForegroundService() {
         createNotificationChannel();
         
-        Intent notificationIntent = new Intent(this, PlayerActivity.class);
+        Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, 
             notificationIntent, PendingIntent.FLAG_IMMUTABLE);
         
@@ -162,7 +162,7 @@ public class BackgroundService extends Service {
     private void updateNotification(String status) {
         NotificationManager manager = getSystemService(NotificationManager.class);
         
-        Intent notificationIntent = new Intent(this, PlayerActivity.class);
+        Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, 
             notificationIntent, PendingIntent.FLAG_IMMUTABLE);
         

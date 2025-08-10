@@ -27,18 +27,20 @@ public class DataStore {
     // 처리된 아이템 목록
     public static CopyOnWriteArrayList<String> aProcessedList = new CopyOnWriteArrayList<>();
     
-    // 사용자 정보
+    // 사용자 정보 (주석 처리 - 로컬 인증 없음)
+    /*
     public static String sUserId = "";
     public static String sDeviceId = "";
     public static Date dtExpDate = null;
+    */
     
     // DB 버전 관리
     public static String sDbVersion = "1.0.0";
     public static String sNewDbVersion = "1.0.0";
-    public static String sDbUrl = "";
+    // public static String sDbUrl = "";  // 서버 URL 주석 처리
     
-    // 서비스 상태
-    public static boolean bEnabled = false;
+    // 서비스 상태 (원본처럼 기본값 true)
+    public static boolean bEnabled = true;
     
     // 품질 설정
     public static int nQuality = 0;

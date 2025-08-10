@@ -7,12 +7,12 @@ public class Config {
     // 타겟 패키지
     public static final String TARGET_PACKAGE = "com.kakao.taxi.driver";
     
-    // 작업 모드
+    // 작업 모드 (원본과 동일)
     public static final int MODE_NONE = 0;
-    public static final int MODE_PLAYLIST = 256;     // 재생목록 모드
-    public static final int MODE_EXCLUSION = 512;    // 제외 모드
+    public static final int MODE_DEST = 256;         // 도착지 모드
+    public static final int MODE_EXCEPT = 512;       // 제외지 모드
     public static final int MODE_ALL = 768;          // 전체 모드
-    public static final int MODE_ADVANCED = 1024;    // 고급 모드
+    public static final int MODE_LONGDISTANCE = 1024; // 장거리 모드
     
     // View ID 상수
     public static final String VIEW_ID_ARROW = "v_arrow";
@@ -31,14 +31,16 @@ public class Config {
     public static final String PREF_NAME = "media_pref";
     public static final String PREF_PRESETS = "presets";
     
-    // 네트워크
+    // 네트워크 설정 (주석 처리 - 로컬 전용)
+    /*
     public static final String SERVER_URL = "https://api.example.com";
     public static final int CONNECTION_TIMEOUT = 10000;
     public static final int READ_TIMEOUT = 10000;
+    */
     
     // 로그
     public static final String LOG_TAG = "MediaPlayer";
-    public static final boolean DEBUG_MODE = false;  // 릴리즈에서는 false
+    public static final boolean DEBUG_MODE = true;  // 디버그 모드 활성화
     
     // 파일 경로
     public static final String DB_FILE_NAME = "media.db";

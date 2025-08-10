@@ -2,12 +2,10 @@
 <accessibility-service
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/accessibility_service_description"
-    android:accessibilityEventTypes="typeWindowContentChanged|typeWindowStateChanged|typeViewClicked|typeViewFocused|typeViewTextChanged"
+    android:settingsActivity="com.media.player.service.MainActivity"
+    android:accessibilityEventTypes="typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackAllMask"
     android:notificationTimeout="200"
-    android:accessibilityFlags="flagIncludeNotImportantViews|flagReportViewIds|flagRetrieveInteractiveWindows|flagRequestTouchExplorationMode|flagRequestEnhancedWebAccessibility"
+    android:accessibilityFlags="flagIncludeNotImportantViews|flagReportViewIds|flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
-    android:canPerformGestures="true"
-    android:canRequestTouchExplorationMode="true"
-    android:canRequestEnhancedWebAccessibility="true"
-    android:packageNames="com.kakao.taxi.driver" />
+    android:canPerformGestures="true" />

@@ -11,6 +11,7 @@ import com.media.player.service.utils.DBHelper;
 import com.media.player.service.utils.Helper;
 import com.media.player.service.utils.Logger;
 import com.media.player.service.utils.DataStore;
+import com.media.player.service.utils.Config;
 import java.util.ArrayList;
 
 /**
@@ -44,6 +45,7 @@ public class WorkerThread implements Runnable {
         
         try {
             this.mLogText += "일반모드 콜분석 시작: " + this.item.mQuality + "," + this.item.mTarget + "\n";
+            Logger.log("[WorkerThread] 현재 모드: " + DataStore.nMode + " (ALL=768, DEST=256, NONE=0)");
             
             // 1. 거리 체크 - 핵심 비즈니스 로직
             int callDistance = Helper.getCallDistance(this.item);
@@ -80,8 +82,9 @@ public class WorkerThread implements Runnable {
             
             // 4. 작업 모드별 처리 - 핵심 비즈니스 로직
             int i3 = DataStore.nMode;
+            Logger.log("[WorkerThread] 모드 체크: nMode=" + i3 + ", 전체모드(768)? " + (i3 == Config.MODE_ALL));
             
-            if (i3 == 256) {  // MODE_DEST (도착지 모드)
+            if (i3 == Config.MODE_DEST) {  // 도착지 모드
                 if (DataStore.sAllPlaylistCodes.isEmpty()) {
                     return;
                 }
@@ -125,7 +128,7 @@ public class WorkerThread implements Runnable {
                 }
                 this.mLogText += "\t: 주소분석 실패: 거절\n";
                 
-            } else if (i3 == 512) {  // MODE_EXCEPT (제외지 모드)
+            } else if (i3 == Config.MODE_EXCEPT) {  // 제외지 모드
                 if (DataStore.sAllExclusionCodes.isEmpty()) {
                     return;
                 }
@@ -164,11 +167,12 @@ public class WorkerThread implements Runnable {
                 }
                 this.mLogText += "\t: 도착지주소 분석 실패: 거절\n";
                 
-            } else if (i3 == 768) {  // MODE_ALL (전체콜 모드)
+            } else if (i3 == Config.MODE_ALL) {  // 전체콜 모드
+                Logger.log("[WorkerThread] 전체콜 모드 - 자동 수락 버튼 클릭!");
                 Helper.delegateButtonClick(this.item.mPlayCtrl);
                 this.mLogText += "\t: 전체모드: 접수\n";
                 
-            } else if (i3 == 1024) {  // MODE_LONGDISTANCE (장거리 모드)
+            } else if (i3 == Config.MODE_LONGDISTANCE) {  // 장거리 모드
                 this.mLogText += "\t" + this.item.mSource + " -> " + this.item.mTarget + ": 거리모드 체크 시작\n";
                 
                 // 출발지와 도착지 분석
@@ -221,6 +225,9 @@ public class WorkerThread implements Runnable {
                     // }
                     this.mLogText += "\t: 장거리 모드 - DB 연동 필요\n";
                 }
+            } else {
+                Logger.log("[WorkerThread] 모드가 설정되지 않음. nMode=" + i3);
+                this.mLogText += "\t: 모드 미설정 - 동작 안함\n";
             }
             
         } catch (Exception e) {

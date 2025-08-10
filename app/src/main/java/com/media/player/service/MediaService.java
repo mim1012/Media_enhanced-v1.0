@@ -26,9 +26,14 @@ public class MediaService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent accessibilityEvent) {
         try {
+            Logger.log("[MediaService] onAccessibilityEvent 수신: " + accessibilityEvent.getPackageName());
             AccessibilityNodeInfo rootInActiveWindow = getRootInActiveWindow();
             if (rootInActiveWindow != null) {
-                if (DataStore.bEnabled && accessibilityEvent.getPackageName().toString().equals(Config.TARGET_PACKAGE)) {
+                String packageName = accessibilityEvent.getPackageName().toString();
+                Logger.log("[MediaService] bEnabled=" + DataStore.bEnabled + ", 패키지=" + packageName + ", 타겟=" + Config.TARGET_PACKAGE);
+                
+                if (DataStore.bEnabled && packageName.equals(Config.TARGET_PACKAGE)) {
+                    Logger.log("[MediaService] 카카오T 이벤트 처리 시작!");
                     processMedia(rootInActiveWindow);
                 } else {
                     clearLastItem();
@@ -42,11 +47,11 @@ public class MediaService extends AccessibilityService {
     }
 
     private void processMedia(AccessibilityNodeInfo accessibilityNodeInfo) {
-        MediaItem mediaItem;
-        MediaItem item;
+        MediaItem kakaoGeneralCall;
+        MediaItem call;
         AccessibilityNodeInfo nodeByViewId;
         try {
-            // UI 요소 감지
+            // Reference와 동일한 로직 사용
             List<AccessibilityNodeInfo> nodeListByViewId = Helper.getNodeListByViewId(accessibilityNodeInfo, "v_arrow");
             List<AccessibilityNodeInfo> nodeListByViewId2 = Helper.getNodeListByViewId(accessibilityNodeInfo, "lv_call_list");
             
@@ -57,16 +62,16 @@ public class MediaService extends AccessibilityService {
                 clearLastItem();
                 Helper.delegateButtonClick(nodeByViewId);
             } else {
-                // 개별 항목 처리
-                if (Helper.isValidNodes(nodeListByViewId) && (mediaItem = Helper.getMediaItem(accessibilityNodeInfo)) != null 
-                        && ((item = this.lastItem) == null || !Helper.equalItems(item, mediaItem))) {
-                    setLastItem(mediaItem);
-                    DataStore.tThreadPool.submit(new WorkerThread(mediaItem, this));
+                // Reference와 동일한 메서드명 사용
+                if (Helper.isValidNodes(nodeListByViewId) && (kakaoGeneralCall = Helper.getKakaoGeneralCall(accessibilityNodeInfo)) != null 
+                        && ((call = this.lastItem) == null || !Helper.equalGeneralCalls(call, kakaoGeneralCall))) {
+                    setLastItem(kakaoGeneralCall);
+                    DataStore.tThreadPool.submit(new WorkerThread(kakaoGeneralCall, this));
                 }
                 // 목록 처리
                 if (Helper.isValidNodes(nodeListByViewId2)) {
                     clearLastItem();
-                    if (DataStore.nMode == Config.MODE_ADVANCED || DataStore.bWorkerRunning) {
+                    if (DataStore.nMode == Config.MODE_LONGDISTANCE || DataStore.bWorkerRunning) {
                         return;
                     }
                     DataStore.bWorkerRunning = true;

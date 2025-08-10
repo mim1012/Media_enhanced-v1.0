@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme -->
+    <style name="Theme.KakaoAuto" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
+        <item name="colorOnPrimary">@color/colorOnPrimary</item>
+        
+        <!-- Secondary brand color -->
+        <item name="colorSecondary">@color/colorSecondary</item>
+        <item name="colorSecondaryVariant">@color/colorSecondaryVariant</item>
+        <item name="colorOnSecondary">@color/colorOnSecondary</item>
+        
+        <!-- Status bar color -->
+        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+        
+        <!-- Customize your theme here -->
+        <item name="android:windowBackground">@color/colorBackground</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        
+        <!-- Typography -->
+        <item name="android:fontFamily">@font/roboto</item>
+        
+        <!-- Shape -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.KakaoAuto.SmallComponent</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.KakaoAuto.MediumComponent</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.KakaoAuto.LargeComponent</item>
+    </style>
+    
+    <!-- AppBar Overlay -->
+    <style name="Theme.KakaoAuto.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+    </style>
+    
+    <!-- Popup Overlay -->
+    <style name="Theme.KakaoAuto.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+    
+    <!-- Shape Appearances -->
+    <style name="ShapeAppearance.KakaoAuto.SmallComponent" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">8dp</item>
+    </style>
+    
+    <style name="ShapeAppearance.KakaoAuto.MediumComponent" parent="ShapeAppearance.MaterialComponents.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+    
+    <style name="ShapeAppearance.KakaoAuto.LargeComponent" parent="ShapeAppearance.MaterialComponents.LargeComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+    
+    <!-- Custom Button Style -->
+    <style name="Widget.KakaoAuto.Button" parent="Widget.MaterialComponents.Button">
+        <item name="android:textAllCaps">false</item>
+        <item name="cornerRadius">8dp</item>
+        <item name="android:padding">12dp</item>
+    </style>
+    
+    <!-- Custom Card Style -->
+    <style name="Widget.KakaoAuto.CardView" parent="Widget.MaterialComponents.CardView">
+        <item name="cardCornerRadius">12dp</item>
+        <item name="cardElevation">4dp</item>
+        <item name="cardBackgroundColor">@color/card_background</item>
+    </style>
+    
+    <!-- Custom Chip Style -->
+    <style name="Widget.KakaoAuto.Chip.Choice" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="chipBackgroundColor">@color/chip_background</item>
+        <item name="android:textColor">@color/chip_text</item>
+        <item name="chipCornerRadius">16dp</item>
+    </style>
+</resources>

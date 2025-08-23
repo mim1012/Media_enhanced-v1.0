@@ -65,15 +65,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             CallMode.STANDBY -> DataStore.nMode = Config.MODE_NONE
         }
         
-        // Load distance setting from DataStore
-        val savedDistance = DataStore.nQuality / 1000f
-        if (savedDistance > 0) {
-            _distanceRange.value = savedDistance
-        } else {
-            // 기본값 3km로 설정
-            _distanceRange.value = 3f
-            DataStore.nQuality = 3000  // 3km를 미터로 설정
+        // Load distance setting from DataStore (안전한 로드)
+        val savedPreset = DataStore.sQualityPreset
+        val distance = when (savedPreset) {
+            "무제한" -> 51f
+            "" -> 3f  // 빈 문자열이면 기본값
+            else -> {
+                val parsed = savedPreset.replace("km", "").toFloatOrNull()
+                if (parsed != null && parsed > 0) parsed else 3f
+            }
         }
+        _distanceRange.value = distance
+        
+        // 기본값인 경우에만 DataStore 업데이트
+        if (savedPreset.isEmpty()) {
+            DataStore.sQualityPreset = "3km"
+            DataStore.nQuality = 3000
+        }
+        
+        // 디버그 로그 추가
+        android.util.Log.d("MainViewModel", "거리 로드: savedPreset='$savedPreset' → distance=$distance")
         
         // Load keywords from DataStore
         DataStore.aFilterList?.let {
@@ -113,10 +124,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     fun updateDistance(distance: Float) {
         _distanceRange.value = distance
-        // DataStore에 거리 값 저장
-        val distanceKm = "${distance}km"
+        // DataStore에 거리 값 저장 (정확한 형태로)
+        val distanceKm = if (distance >= 51f) {
+            "무제한"
+        } else {
+            // 0.8km 같은 정확한 형태로 저장
+            if (distance == distance.toInt().toFloat()) {
+                "${distance.toInt()}km"  // 3.0 → "3km"
+            } else {
+                "${distance}km"  // 0.8 → "0.8km"
+            }
+        }
         DataStore.sQualityPreset = distanceKm
-        DataStore.nQuality = (distance * 1000).toInt()
+        DataStore.nQuality = if (distance >= 51f) 0 else (distance * 1000).toInt()
+        
+        // 디버그 로그 추가
+        android.util.Log.d("MainViewModel", "거리 저장: $distance → $distanceKm (nQuality: ${DataStore.nQuality})")
+        
         DataStore.saveConfig(context)
     }
     

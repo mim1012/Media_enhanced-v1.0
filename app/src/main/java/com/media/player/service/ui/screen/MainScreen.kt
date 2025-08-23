@@ -26,6 +26,7 @@ fun MainScreen(
     onDestinationClick: () -> Unit,
     onLoadDestinationClick: () -> Unit = {},
     onKeywordClick: () -> Unit,
+    onSaveTemplateClick: () -> Unit,      // 추가: 템플릿 저장 콜백
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -42,30 +43,10 @@ fun MainScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 상단 날짜 표시
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        ) {
-            Text(
-                text = "📅 $currentDate",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
         
         // 고객과의 거리 설정
         RoundedCardButton(
@@ -108,7 +89,14 @@ fun MainScreen(
             backgroundColor = MaterialTheme.colorScheme.tertiary
         )
         
-        Spacer(modifier = Modifier.height(24.dp))
+        // 템플릿 저장
+        RoundedCardButton(
+            text = "💾 템플릿 저장",
+            onClick = onSaveTemplateClick,
+            backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
         
         // 시작/중지 버튼들
         Row(
@@ -120,21 +108,23 @@ fun MainScreen(
                 onClick = onStartClick,
                 modifier = Modifier
                     .weight(1f)
-                    .height(64.dp),
+                    .height(60.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "🚀",
+                        text = if (isServiceRunning) "⏸️" else "▶️",
                         fontSize = 24.sp
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "시작",
+                        text = if (isServiceRunning) "일시정지" else "재생",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -146,21 +136,23 @@ fun MainScreen(
                 onClick = onStopClick,
                 modifier = Modifier
                     .weight(1f)
-                    .height(64.dp),
+                    .height(60.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "⏹️",
                         fontSize = 24.sp
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "중지",
+                        text = "정지",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -206,6 +198,7 @@ fun MainScreenPreview() {
             onCallModeClick = { },
             onDestinationClick = { },
             onKeywordClick = { },
+            onSaveTemplateClick = { },     // 추가
             onStartClick = { },
             onStopClick = { },
             currentDistance = "무제한",

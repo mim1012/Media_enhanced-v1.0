@@ -76,12 +76,10 @@ public class DataStore {
     public static String ACTION_PLAY_PAUSE = "action_play_pause";
     public static String ACTION_GO_HOME = "action_go_home";
     
-    // 품질 프리셋 목록
+    // 품질 프리셋 목록 (0.8km ~ 50km + 무제한)
     public static final String[] QUALITY_PRESETS = {
-        "0.7km", "1km", "1.5km", "2km", "2.5km", "3km", "3.5km", "4km", "4.5km", "5km",
-        "5.5km", "6km", "6.5km", "7km", "7.5km", "8km", "8.5km", "9km", "9.5km", "10km",
-        "10.5km", "11km", "11.5km", "12km", "12.5km", "13km", "13.5km", "14km", "14.5km", "15km",
-        "최고 품질"
+        "0.8km", "1km", "2km", "3km", "4km", "5km", "6km", "7km", "8km", "9km", "10km",
+        "12km", "15km", "20km", "25km", "30km", "35km", "40km", "45km", "50km", "무제한"
     };
 
     public static void loadConfig(Context context) {
@@ -92,13 +90,23 @@ public class DataStore {
         sDbVersion = sharedPreferences.getString("DB_VERSION", "1.0.0");
         nQuality = sharedPreferences.getInt("quality", 0);
         sQualityPreset = sharedPreferences.getString("qualityPreset", "1km");
+        // 디버그 로그 추가
+        android.util.Log.d("DataStore", "설정 로드: qualityPreset='" + sQualityPreset + "', quality=" + nQuality);
         nAdvancedQuality = sharedPreferences.getInt("advQuality", 0);
         bAutoSkip = sharedPreferences.getBoolean("autoSkip", false);
         bVolumeControl = sharedPreferences.getBoolean("volumeCtrl", false);
         bFullMode = sharedPreferences.getBoolean("fullMode", false);
+        nMode = sharedPreferences.getInt("mode", Config.MODE_NONE);  // 기본값: MODE_NONE
         
-        sExclusionList = FileHelper.loadExclusionFile();
-        sPlaylist = FileHelper.loadPlaylistFile();
+        // 파일 로드를 안전하게 처리
+        try {
+            sExclusionList = FileHelper.loadExclusionFile();
+            sPlaylist = FileHelper.loadPlaylistFile();
+        } catch (Exception e) {
+            // 파일 로드 실패 시 빈 문자열 사용
+            sExclusionList = "";
+            sPlaylist = "";
+        }
         aExclusionList = parseStr2Array(sExclusionList);
         aPlaylistItems = parseStr2Array(sPlaylist);
         
@@ -114,10 +122,13 @@ public class DataStore {
         edit.putString("DB_VERSION", sDbVersion);
         edit.putInt("quality", nQuality);
         edit.putString("qualityPreset", sQualityPreset);
+        // 디버그 로그 추가
+        android.util.Log.d("DataStore", "설정 저장: qualityPreset='" + sQualityPreset + "', quality=" + nQuality);
         edit.putInt("advQuality", nAdvancedQuality);
         edit.putBoolean("autoSkip", bAutoSkip);
         edit.putBoolean("volumeCtrl", bVolumeControl);
         edit.putBoolean("fullMode", bFullMode);
+        edit.putInt("mode", nMode);  // 모드 저장 추가
         edit.putString("filters", parseArray2Str(aFilterList));
         edit.apply();
         
@@ -127,15 +138,15 @@ public class DataStore {
     }
     
     private static void updateQualityFromPreset() {
-        if (sQualityPreset.equals("최고 품질")) {
-            nQuality = 0;
+        if (sQualityPreset.equals("무제한") || sQualityPreset.equals("최고 품질")) {
+            nQuality = 0;  // 0이면 거리 제한 없음
         } else {
             String qualStr = sQualityPreset.replace("km", "").trim();
             try {
                 float quality = Float.parseFloat(qualStr);
-                nQuality = (int)(quality * 1000);
+                nQuality = (int)(quality * 1000);  // 미터 단위로 저장
             } catch (NumberFormatException e) {
-                nQuality = 1000;
+                nQuality = 1000;  // 기본값 1km
             }
         }
     }

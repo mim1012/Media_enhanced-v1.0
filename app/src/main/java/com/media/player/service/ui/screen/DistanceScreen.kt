@@ -9,23 +9,35 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.media.player.service.ui.components.SliderWithLabel
 import com.media.player.service.ui.theme.MediaPlayerTheme
+import com.media.player.service.utils.DataStore
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DistanceScreen(
-    initialDistance: Float = 10f,
-    onDistanceChange: (Float) -> Unit = {},
+    initialDistance: Float = 3f,
     onSave: (Float) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var currentDistance by remember { mutableFloatStateOf(initialDistance) }
+    // 거리 프리셋을 슬라이더 값으로 매핑
+    val presets = DataStore.QUALITY_PRESETS
+    val currentIndex = remember(initialDistance) {
+        if (initialDistance >= 51f) {
+            presets.size - 1  // "무제한"
+        } else {
+            val targetPreset = "${initialDistance.toInt()}km"
+            presets.indexOf(targetPreset).let { if (it == -1) 2 else it }  // 기본값 3km
+        }
+    }
+    
+    var sliderValue by remember { mutableFloatStateOf(currentIndex.toFloat()) }
+    val selectedPreset = presets[sliderValue.roundToInt().coerceIn(0, presets.size - 1)]
     
     Column(
         modifier = modifier.fillMaxSize()
@@ -34,7 +46,7 @@ fun DistanceScreen(
         TopAppBar(
             title = {
                 Text(
-                    text = "거리 설정",
+                    text = "고객과의 거리",
                     fontWeight = FontWeight.Bold
                 )
             },
@@ -45,105 +57,126 @@ fun DistanceScreen(
                         contentDescription = "뒤로가기"
                     )
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            }
         )
         
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(32.dp)
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .padding(bottom = 80.dp),  // 하단 버튼 공간 확보
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+            Spacer(modifier = Modifier.height(16.dp))
             
-            // 현재 설정된 거리 표시 카드
+            // 현재 설정 표시
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(20.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "현재 설정",
+                        text = "설정된 거리",
                         fontSize = 16.sp,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = if (currentDistance >= 51f) "무제한" else "${currentDistance.roundToInt()}km",
-                        fontSize = 36.sp,
+                        text = selectedPreset,
+                        fontSize = 48.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
+                    Text(
+                        text = if (selectedPreset == "무제한") {
+                            "모든 거리의 콜 수락"
+                        } else {
+                            "이 거리 이내의 콜만 수락"
+                        },
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
             
-            // 거리 슬라이더
-            SliderWithLabel(
-                value = currentDistance,
-                onValueChange = { 
-                    currentDistance = it
-                    onDistanceChange(it)
-                },
-                valueRange = 1f..51f,
-                steps = 49,
-                label = "거리 범위 선택"
+            // 드래그 안내
+            Text(
+                text = "🖱️ 아래 바를 좌우로 드래그해서 거리를 설정하세요",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
             
-            Spacer(modifier = Modifier.weight(1f))
-            
-            // 설명 카드
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+            // 거리 드래그 슬라이더
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Text(
+                    text = "거리 선택",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { sliderValue = it },
+                    valueRange = 0f..(presets.size - 1).toFloat(),
+                    steps = presets.size - 2,  // 중간 스텝들
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 양끝 라벨
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "💡 거리 설정 안내",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = presets.first(),  // "0.8km"
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "• 1km ~ 50km: 해당 거리 내의 콜만 자동 수락",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "• 무제한: 거리에 관계없이 모든 콜 자동 수락",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "• 키워드 조건과 함께 적용됩니다",
-                        fontSize = 14.sp,
+                        text = presets.last(),   // "무제한"
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             
-            // 저장 버튼
+            }
+            
+            // 하단 고정 저장 버튼
             Button(
-                onClick = { onSave(currentDistance) },
+                onClick = {
+                    val distance = when (selectedPreset) {
+                        "무제한" -> 51f
+                        else -> selectedPreset.replace("km", "").toFloatOrNull() ?: 3f
+                    }
+                    onSave(distance)
+                },
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp)
+                    .padding(16.dp)
+                    .height(60.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Text(
                     text = "저장",
@@ -160,7 +193,7 @@ fun DistanceScreen(
 fun DistanceScreenPreview() {
     MediaPlayerTheme {
         DistanceScreen(
-            initialDistance = 15f,
+            initialDistance = 3f,
             onSave = { },
             onBack = { }
         )

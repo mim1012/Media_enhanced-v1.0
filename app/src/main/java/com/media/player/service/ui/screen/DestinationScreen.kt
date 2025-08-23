@@ -16,7 +16,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.media.player.service.ui.theme.MediaPlayerTheme
+import com.media.player.service.utils.RegionLoader
 
 data class Region(
     val name: String,
@@ -31,12 +33,26 @@ data class Region(
 fun DestinationScreen(
     onSave: (Map<String, Map<String, List<String>>>) -> Unit,
     onBack: () -> Unit,
+    onSaveTemplate: () -> Unit = {},    // 템플릿 저장 콜백 추가
     modifier: Modifier = Modifier,
     initialSelectedRegions: Map<String, Map<String, List<String>>> = emptyMap()
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
-    var regions by remember { mutableStateOf(getSampleRegions()) }
+    var regions by remember { mutableStateOf(emptyList<Region>()) }
     var selectedCount by remember { mutableIntStateOf(0) }
+    var isLoading by remember { mutableStateOf(true) }
+    
+    // DB에서 지역 데이터 로드
+    LaunchedEffect(Unit) {
+        try {
+            regions = RegionLoader.loadRegionsFromDB(context)
+            isLoading = false
+        } catch (e: Exception) {
+            isLoading = false
+            // 실패 시 빈 리스트 유지
+        }
+    }
     
     // 선택된 지역 수 계산
     LaunchedEffect(regions) {
@@ -114,46 +130,113 @@ fun DestinationScreen(
             }
             
             // 지역 목록
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(
-                    items = if (searchQuery.isNotEmpty()) {
-                        filterRegions(regions, searchQuery)
-                    } else {
-                        regions
+            if (isLoading) {
+                // 로딩 상태
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "전국 지역 데이터 로딩 중...",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                ) { region ->
-                    RegionItem(
-                        region = region,
-                        onToggleExpand = { regionName ->
-                            regions = toggleRegionExpansion(regions, regionName)
-                        },
-                        onToggleSelect = { regionName, level ->
-                            regions = toggleRegionSelection(regions, regionName, level)
+                }
+            } else if (regions.isEmpty()) {
+                // 빈 상태
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "📍",
+                            fontSize = 64.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "지역 데이터를 불러올 수 없습니다",
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                // 지역 목록
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(
+                        items = if (searchQuery.isNotEmpty()) {
+                            filterRegions(regions, searchQuery)
+                        } else {
+                            regions
                         }
-                    )
+                    ) { region ->
+                        RegionItem(
+                            region = region,
+                            onToggleExpand = { regionName ->
+                                regions = toggleRegionExpansion(regions, regionName)
+                            },
+                            onToggleSelect = { regionName, level ->
+                                regions = toggleRegionSelection(regions, regionName, level)
+                            }
+                        )
+                    }
                 }
             }
             
-            // 저장 버튼
-            Button(
-                onClick = {
-                    val selectedRegions = extractSelectedRegions(regions)
-                    onSave(selectedRegions)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                enabled = true
+            // 버튼들
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "저장",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                // 템플릿 저장 버튼
+                OutlinedButton(
+                    onClick = onSaveTemplate,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "💾 템플릿저장",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                
+                // 도착지 저장 버튼
+                Button(
+                    onClick = {
+                        val selectedRegions = extractSelectedRegions(regions)
+                        onSave(selectedRegions)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = true
+                ) {
+                    Text(
+                        text = "저장",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
@@ -250,88 +333,6 @@ fun RegionItem(
     }
 }
 
-// 샘플 지역 데이터 (실제 대한민국 전국 데이터)
-fun getSampleRegions(): List<Region> {
-    return listOf(
-        Region(
-            name = "서울특별시",
-            level = 0,
-            subRegions = listOf(
-                Region(
-                    name = "강남구",
-                    level = 1,
-                    subRegions = listOf(
-                        Region("논현동", level = 2),
-                        Region("역삼동", level = 2),
-                        Region("삼성동", level = 2),
-                        Region("대치동", level = 2)
-                    )
-                ),
-                Region(
-                    name = "강북구",
-                    level = 1,
-                    subRegions = listOf(
-                        Region("수유동", level = 2),
-                        Region("미아동", level = 2)
-                    )
-                ),
-                Region(
-                    name = "광진구",
-                    level = 1,
-                    subRegions = listOf(
-                        Region("자양동", level = 2),
-                        Region("구의동", level = 2)
-                    )
-                )
-            )
-        ),
-        Region(
-            name = "부산광역시",
-            level = 0,
-            subRegions = listOf(
-                Region(
-                    name = "해운대구",
-                    level = 1,
-                    subRegions = listOf(
-                        Region("우동", level = 2),
-                        Region("중동", level = 2)
-                    )
-                ),
-                Region(
-                    name = "부산진구",
-                    level = 1,
-                    subRegions = listOf(
-                        Region("부전동", level = 2),
-                        Region("서면동", level = 2)
-                    )
-                )
-            )
-        ),
-        Region(
-            name = "전라남도",
-            level = 0,
-            subRegions = listOf(
-                Region(
-                    name = "무안군",
-                    level = 1,
-                    subRegions = listOf(
-                        Region("무안읍", level = 2),
-                        Region("삼향읍", level = 2)
-                    )
-                ),
-                Region(
-                    name = "광주광역시",
-                    level = 1,
-                    subRegions = listOf(
-                        Region("북구", level = 2),
-                        Region("서구", level = 2),
-                        Region("남구", level = 2)
-                    )
-                )
-            )
-        )
-    )
-}
 
 // 유틸리티 함수들
 fun countSelectedRegions(regions: List<Region>): Int {
@@ -440,7 +441,8 @@ fun DestinationScreenPreview() {
     MediaPlayerTheme {
         DestinationScreen(
             onSave = { },
-            onBack = { }
+            onBack = { },
+            onSaveTemplate = { }
         )
     }
 }

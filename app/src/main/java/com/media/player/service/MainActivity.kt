@@ -14,28 +14,58 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import com.media.player.service.ui.theme.MediaPlayerTheme
 import com.media.player.service.ui.screen.*
+import com.media.player.service.ui.screen.TemplateLoadScreen
+import com.media.player.service.ui.dialog.SaveTemplateDialog
 import com.media.player.service.utils.Config
 import com.media.player.service.utils.DataStore
+import com.media.player.service.utils.Preset
 import com.media.player.service.viewmodel.MainViewModel
 import com.media.player.service.viewmodel.CallMode
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 
 class MainActivity : ComponentActivity() {
     companion object {
         private const val PERMISSION_REQUEST_CODE = 100
     }
     
+    private lateinit var notificationReceiver: BroadcastReceiver
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 설정 로드
-        DataStore.loadConfig(this)
+        // 설정 로드 (매우 안전한 초기화)
+        try {
+            DataStore.loadConfig(this)
+            android.util.Log.d("MainActivity", "DataStore 로드 성공")
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "DataStore 로드 실패", e)
+            // 초기화 실패 시 최소한의 기본값만 설정
+            DataStore.bEnabled = false
+            DataStore.nMode = 0
+            DataStore.bFullMode = false
+            DataStore.nQuality = 3000
+            DataStore.sQualityPreset = "3km"
+            DataStore.aFilterList = ArrayList()
+            DataStore.aPresetList = ArrayList()
+        }
+        
+        // 알림 채널 생성
+        NotificationService.createNotificationChannel(this)
+        
+        // BroadcastReceiver 다시 활성화 (안전한 버전)
+        setupNotificationReceiver()
         
         // 백그라운드 서비스 자동 시작 (원본처럼)
         startBackgroundService()
@@ -71,28 +101,6 @@ class MainActivity : ComponentActivity() {
         viewModel?.updateServiceStatus(isAccessibilityServiceEnabled())
     }
     
-    private fun startBackgroundService() {
-        val intent = Intent(this, BackgroundService::class.java)
-        startService(intent)
-    }
-    
-    private fun updateServiceStatus() {
-        // 접근성 서비스가 활성화되어 있으면 서비스가 동작 중인 것으로 간주
-        val isRunning = isAccessibilityServiceEnabled()
-        // DataStore의 bEnabled도 업데이트
-        DataStore.bEnabled = isRunning
-    }
-    
-    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
-        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.name == service.service.className) {
-                return true
-            }
-        }
-        return false
-    }
-    
     @Composable
     fun MainApp() {
         val navController = rememberNavController()
@@ -101,6 +109,9 @@ class MainActivity : ComponentActivity() {
         val isServiceRunning by viewModel.isServiceRunning.collectAsState()
         val selectedDestinations by viewModel.selectedDestinations.collectAsState()
         val distanceRange by viewModel.distanceRange.collectAsState()
+        
+        // 다이얼로그 상태
+        var showSaveTemplateDialog by remember { mutableStateOf(false) }
         
         NavHost(
             navController = navController,
@@ -113,35 +124,53 @@ class MainActivity : ComponentActivity() {
                     onDistanceClick = { navController.navigate("distance") },
                     onKeywordClick = { navController.navigate("keyword") },
                     onLoadDestinationClick = {
-                        Toast.makeText(this@MainActivity, "대행지 불러오기", Toast.LENGTH_SHORT).show()
+                        navController.navigate("templateLoad")
+                    },
+                    onSaveTemplateClick = {
+                        showSaveTemplateDialog = true
                     },
                     onStartClick = {
-                        // 자동 수락 활성화 및 카카오 택시 실행
-                        DataStore.bEnabled = true
-                        // 현재 모드에 따른 nMode 설정 - 중요!
-                        when(callMode) {
-                            CallMode.ALL -> DataStore.nMode = Config.MODE_ALL
-                            CallMode.PARTIAL -> DataStore.nMode = Config.MODE_DEST
-                            CallMode.STANDBY -> DataStore.nMode = Config.MODE_NONE
+                        if (isServiceRunning) {
+                            // 일시정지 (실행 중 → 중지)
+                            DataStore.bEnabled = false
+                            viewModel.updateServiceStatus(false)
+                            NotificationService.showStoppedNotification(this@MainActivity)
+                            Toast.makeText(this@MainActivity, "⏸️ 자동 재생 일시정지", Toast.LENGTH_SHORT).show()
+                        } else {
+                            // 재생 시작 (중지 → 실행)
+                            DataStore.bEnabled = true
+                            when(callMode) {
+                                CallMode.ALL -> DataStore.nMode = Config.MODE_ALL
+                                CallMode.PARTIAL -> DataStore.nMode = Config.MODE_DEST
+                                CallMode.STANDBY -> DataStore.nMode = Config.MODE_NONE
+                            }
+                            viewModel.updateServiceStatus(true)
+                            NotificationService.showRunningNotification(this@MainActivity)
+                            Toast.makeText(this@MainActivity, "▶️ 자동 재생 시작 ✅ [모드: ${when(callMode) {
+                                CallMode.ALL -> "전체 재생모드"
+                                CallMode.PARTIAL -> "선택 재생모드"
+                                CallMode.STANDBY -> "대기"
+                            }}]", Toast.LENGTH_SHORT).show()
+                            startKakaoTaxiApp()
                         }
-                        viewModel.updateServiceStatus(true)  // ViewModel 상태 업데이트
-                        Toast.makeText(this@MainActivity, "자동 수락 시작 ✅ [모드: ${when(callMode) {
-                            CallMode.ALL -> "전체콜"
-                            CallMode.PARTIAL -> "선택콜"
-                            CallMode.STANDBY -> "대기"
-                        }}]", Toast.LENGTH_SHORT).show()
-                        startKakaoTaxiApp()
                     },
                     onStopClick = {
-                        // DataStore의 bEnabled를 false로 설정하여 자동 수락 중지
+                        // 완전 중지
                         DataStore.bEnabled = false
-                        viewModel.updateServiceStatus(false)  // ViewModel 상태 업데이트
-                        Toast.makeText(this@MainActivity, "자동 수락 중지 ⛔", Toast.LENGTH_SHORT).show()
+                        viewModel.updateServiceStatus(false)
+                        NotificationService.hideNotification(this@MainActivity)  // 알림 완전 제거
+                        Toast.makeText(this@MainActivity, "⏹️ 완전 중지", Toast.LENGTH_SHORT).show()
                     },
-                    currentDistance = if (distanceRange >= 51f) "무제한" else "${distanceRange.toInt()}km",
+                    currentDistance = if (distanceRange >= 51f) "무제한" else {
+                        if (distanceRange == distanceRange.toInt().toFloat()) {
+                            "${distanceRange.toInt()}km"  // 3.0 → "3km"
+                        } else {
+                            "${distanceRange}km"  // 0.8 → "0.8km"
+                        }
+                    },
                     currentCallMode = when(callMode) {
-                        CallMode.ALL -> "전체콜 모드"
-                        CallMode.PARTIAL -> "선택콜 모드"
+                        CallMode.ALL -> "전체 재생모드"
+                        CallMode.PARTIAL -> "선택 재생모드"
                         CallMode.STANDBY -> "대기 모드"
                     },
                     destinationCount = selectedDestinations.size,
@@ -180,7 +209,10 @@ class MainActivity : ComponentActivity() {
                     onSave = { 
                         navController.popBackStack()
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onSaveTemplate = {
+                        showSaveTemplateDialog = true
+                    }
                 )
             }
             
@@ -203,7 +235,169 @@ class MainActivity : ComponentActivity() {
                     onBack = { navController.popBackStack() }
                 )
             }
+            
+            composable("templateLoad") {
+                TemplateLoadScreen(
+                    onBack = { navController.popBackStack() },
+                    onTemplateSelected = { preset ->
+                        try {
+                            // 선택된 템플릿 적용
+                            preset.applyToSettings()
+                            DataStore.saveConfig(this@MainActivity)
+                            
+                            // ViewModel 상태 업데이트
+                            when {
+                                preset.fullMode -> viewModel.updateCallMode(CallMode.ALL)
+                                preset.nMode == Config.MODE_DEST -> viewModel.updateCallMode(CallMode.PARTIAL)  
+                                else -> viewModel.updateCallMode(CallMode.STANDBY)
+                            }
+                            
+                            // 거리 설정 업데이트
+                            val distance = if (preset.qualityPreset == "무제한") 51f
+                                         else preset.qualityPreset.replace("km", "").toFloatOrNull() ?: 3f
+                            viewModel.updateDistance(distance)
+                            
+                            navController.popBackStack()
+                            Toast.makeText(
+                                this@MainActivity,
+                                "템플릿 '${preset.name}' 적용완료 ✅",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "템플릿 적용 실패: ${e.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    },
+                    onTemplateDeleted = { preset ->
+                        try {
+                            DataStore.aPresetList.remove(preset)
+                            DataStore.saveConfig(this@MainActivity)
+                            Toast.makeText(
+                                this@MainActivity,
+                                "템플릿 '${preset.name}' 삭제완료 🗑️",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "템플릿 삭제 실패: ${e.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                )
+            }
         }
+        
+        // 템플릿 저장 다이얼로그
+        if (showSaveTemplateDialog) {
+            SaveTemplateDialog(
+                onDismiss = { showSaveTemplateDialog = false },
+                onSave = { templateName ->
+                    try {
+                        // 현재 설정을 템플릿으로 저장
+                        val preset = Preset.fromCurrentSettings(templateName)
+                        DataStore.aPresetList.add(preset)
+                        DataStore.saveConfig(this@MainActivity)
+                        
+                        showSaveTemplateDialog = false
+                        Toast.makeText(
+                            this@MainActivity, 
+                            "템플릿 '$templateName' 저장완료 ✅", 
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            this@MainActivity, 
+                            "템플릿 저장 실패: ${e.message}", 
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                currentCallMode = when(callMode) {
+                    CallMode.ALL -> "전체 재생모드"
+                    CallMode.PARTIAL -> "선택 재생모드"
+                    CallMode.STANDBY -> "설정 대기"
+                },
+                currentDistance = if (distanceRange >= 51f) "무제한" else {
+                    if (distanceRange == distanceRange.toInt().toFloat()) {
+                        "${distanceRange.toInt()}km"  // 3.0 → "3km"
+                    } else {
+                        "${distanceRange}km"  // 0.8 → "0.8km"
+                    }
+                }
+            )
+        }
+    }
+    
+    /**
+     * 상태창 알림과 앱 연동을 위한 BroadcastReceiver 설정
+     */
+    private fun setupNotificationReceiver() {
+        try {
+            notificationReceiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    try {
+                        when (intent.action) {
+                            "com.media.player.service.ACTION_START" -> {
+                                // 상태바에서 시작 버튼 클릭됨 → 앱 상태 업데이트
+                                DataStore.bEnabled = true
+                                android.util.Log.d("MainActivity", "상태바에서 시작 - 앱 상태 업데이트")
+                            }
+                            "com.media.player.service.ACTION_STOP" -> {
+                                // 상태바에서 중지 버튼 클릭됨 → 앱 상태 업데이트
+                                DataStore.bEnabled = false
+                                android.util.Log.d("MainActivity", "상태바에서 중지 - 앱 상태 업데이트")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "BroadcastReceiver 에러", e)
+                    }
+                }
+            }
+            
+            val filter = IntentFilter().apply {
+                addAction("com.media.player.service.ACTION_START")
+                addAction("com.media.player.service.ACTION_STOP")
+            }
+            registerReceiver(notificationReceiver, filter)
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "BroadcastReceiver 등록 실패", e)
+        }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(notificationReceiver)
+        } catch (e: Exception) {
+            // 이미 해제된 경우 무시
+        }
+    }
+    
+    private fun startBackgroundService() {
+        val intent = Intent(this, BackgroundService::class.java)
+        startService(intent)
+    }
+    
+    private fun updateServiceStatus() {
+        // 접근성 서비스가 활성화되어 있으면 서비스가 동작 중인 것으로 간주
+        val isRunning = isAccessibilityServiceEnabled()
+        // DataStore의 bEnabled도 업데이트
+        DataStore.bEnabled = isRunning
+    }
+    
+    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                return true
+            }
+        }
+        return false
     }
     
     private fun checkPermissions() {

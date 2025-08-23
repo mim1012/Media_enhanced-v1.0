@@ -9,6 +9,7 @@ public class Preset {
     public String name;
     public String qualityPreset;
     public boolean fullMode;
+    public int nMode;              // 추가: 모드 저장 (768=전체콜, 256=부분콜, 0=대기)
     public String filters;
     public String playlist;
     public String exclusionList;
@@ -24,6 +25,7 @@ public class Preset {
         Preset preset = new Preset(name);
         preset.qualityPreset = DataStore.sQualityPreset;
         preset.fullMode = DataStore.bFullMode;
+        preset.nMode = DataStore.nMode;        // 추가: 현재 모드 저장
         preset.filters = DataStore.parseArray2Str(DataStore.aFilterList);
         preset.playlist = DataStore.sPlaylist;
         preset.exclusionList = DataStore.sExclusionList;
@@ -34,6 +36,7 @@ public class Preset {
     public void applyToSettings() {
         DataStore.sQualityPreset = this.qualityPreset;
         DataStore.bFullMode = this.fullMode;
+        DataStore.nMode = this.nMode;          // 추가: 모드 적용
         DataStore.aFilterList = DataStore.parseStr2Array(this.filters);
         DataStore.sPlaylist = this.playlist;
         DataStore.sExclusionList = this.exclusionList;
@@ -49,6 +52,7 @@ public class Preset {
             json.put("name", name);
             json.put("qualityPreset", qualityPreset);
             json.put("fullMode", fullMode);
+            json.put("nMode", nMode);              // 추가: nMode JSON 저장
             json.put("filters", filters);
             json.put("playlist", playlist);
             json.put("exclusionList", exclusionList);
@@ -66,6 +70,7 @@ public class Preset {
             Preset preset = new Preset(json.getString("name"));
             preset.qualityPreset = json.getString("qualityPreset");
             preset.fullMode = json.getBoolean("fullMode");
+            preset.nMode = json.optInt("nMode", 0);    // 추가: nMode JSON 로드 (기본값 0)
             preset.filters = json.getString("filters");
             preset.playlist = json.getString("playlist");
             preset.exclusionList = json.getString("exclusionList");

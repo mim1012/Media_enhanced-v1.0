@@ -45,7 +45,6 @@ public class WorkerThread implements Runnable {
         
         try {
             this.mLogText += "일반모드 콜분석 시작: " + this.item.mQuality + "," + this.item.mTarget + "\n";
-            Logger.log("[WorkerThread] 현재 모드: " + DataStore.nMode + " (ALL=768, DEST=256, NONE=0)");
             
             // 1. 거리 체크 - 핵심 비즈니스 로직
             int callDistance = Helper.getCallDistance(this.item);
@@ -68,7 +67,18 @@ public class WorkerThread implements Runnable {
                 }
             }
             
-            // 3. 우선 선호지 체크 - 핵심 비즈니스 로직
+            // 3. 우선 키워드 체크 - 무조건 수락
+            if (DataStore.aFilterList != null && DataStore.aFilterList.size() >= 1) {
+                for (String keyword : DataStore.aFilterList) {
+                    if (this.item.mTarget.contains(keyword)) {
+                        this.mLogText += "\t: 우선키워드 매칭 -> 콜:" + this.item.mTarget + ", 키워드:" + keyword + " → 무조건 수락\n";
+                        Helper.delegateButtonClick(this.item.mPlayCtrl);
+                        return;
+                    }
+                }
+            }
+            
+            // 4. 우선 선호지 체크 - DB 기반 지역
             if (DataStore.aPlaylistItems != null && DataStore.aPlaylistItems.size() >= 1) {
                 for (int i2 = 0; i2 < DataStore.aPlaylistItems.size(); i2++) {
                     String str2 = DataStore.aPlaylistItems.get(i2);
@@ -80,55 +90,73 @@ public class WorkerThread implements Runnable {
                 }
             }
             
-            // 4. 작업 모드별 처리 - 핵심 비즈니스 로직
-            int i3 = DataStore.nMode;
-            Logger.log("[WorkerThread] 모드 체크: nMode=" + i3 + ", 전체모드(768)? " + (i3 == Config.MODE_ALL));
+            // 5. 전체콜 모드 체크 - 최우선 처리
+            if (DataStore.bFullMode) {
+                Helper.delegateButtonClick(this.item.mPlayCtrl);
+                this.mLogText += "\t: 전체콜 모드: 무조건 접수\n";
+                return;
+            }
             
-            if (i3 == Config.MODE_DEST) {  // 도착지 모드
-                if (DataStore.sAllPlaylistCodes.isEmpty()) {
-                    return;
-                }
-                this.mLogText += "\t: 도착지 체크 시작\n";
-                ItemInfo analyzeDestination = Helper.analyzeDestination(this.item);
+            // 6. 부분콜 모드 - 작업 모드별 처리
+            int i3 = DataStore.nMode;
+            
+            if (i3 == Config.MODE_DEST) {  // 부분콜 모드 (256) - DB기반 + 키워드기반
+                this.mLogText += "\t: 부분콜 모드 - DB 및 키워드 체크 시작\n";
+                boolean shouldAccept = false;
                 
-                if (analyzeDestination != null && analyzeDestination.sDongName != null 
-                        && (analyzeDestination.bRoad || analyzeDestination.sSigunguName != null)) {
-                    this.mLogText += "\t: 주소분석 성공: 시도구명=" + analyzeDestination.sSigunguName 
-                        + ", 동(도로)이름=" + analyzeDestination.sDongName 
-                        + ", 도로명주소인가=" + analyzeDestination.bRoad + "\n";
+                // 1단계: DB 기반 지역 체크 (sAllPlaylistCodes가 있을 때만)
+                if (!DataStore.sAllPlaylistCodes.isEmpty()) {
+                    this.mLogText += "\t: DB 기반 도착지 체크\n";
+                    ItemInfo analyzeDestination = Helper.analyzeDestination(this.item);
                     
-                    ArrayList<Integer> arrayList = new ArrayList();
-                    if (analyzeDestination.bRoad) {
-                        this.mLogText += DBHelper.findHjdongCodeListByDestInfo(this.context, arrayList, analyzeDestination);
-                    } else {
-                        this.mLogText += DBHelper.findHjdongCodeListByHjdongName(this.context, arrayList, analyzeDestination);
-                        if (arrayList.isEmpty()) {
-                            this.mLogText += DBHelper.findHjdongCodeListByBjdongName(this.context, arrayList, analyzeDestination);
+                    if (analyzeDestination != null && analyzeDestination.sDongName != null 
+                            && (analyzeDestination.bRoad || analyzeDestination.sSigunguName != null)) {
+                        this.mLogText += "\t: 주소분석 성공: 시도구명=" + analyzeDestination.sSigunguName 
+                            + ", 동(도로)이름=" + analyzeDestination.sDongName 
+                            + ", 도로명주소인가=" + analyzeDestination.bRoad + "\n";
+                        
+                        ArrayList<Integer> arrayList = new ArrayList();
+                        if (analyzeDestination.bRoad) {
+                            this.mLogText += DBHelper.findHjdongCodeListByDestInfo(this.context, arrayList, analyzeDestination);
+                        } else {
+                            this.mLogText += DBHelper.findHjdongCodeListByHjdongName(this.context, arrayList, analyzeDestination);
+                            if (arrayList.isEmpty()) {
+                                this.mLogText += DBHelper.findHjdongCodeListByBjdongName(this.context, arrayList, analyzeDestination);
+                            }
+                        }
+                        
+                        for (Integer num : arrayList) {
+                            int intValue = num.intValue();
+                            if (DataStore.sAllPlaylistCodes.contains(String.valueOf(intValue))) {
+                                this.mLogText += "\t: DB 도착지 매칭 성공: " + intValue + " → 접수\n";
+                                shouldAccept = true;
+                                break;
+                            }
                         }
                     }
-                    
-                    for (Integer num : arrayList) {
-                        int intValue = num.intValue();
-                        if (DataStore.sAllPlaylistCodes.contains(String.valueOf(intValue))) {
-                            this.mLogText += "\t: 도착지체크 성공 : " + intValue + " : 콜수락버튼 클릭됨\n";
-                            Helper.delegateButtonClick(this.item.mPlayCtrl);
-                            return;
+                }
+                
+                // 2단계: 키워드 기반 체크 (DB 매칭 실패 시 또는 DB 코드가 없을 때)
+                if (!shouldAccept && DataStore.aFilterList != null && !DataStore.aFilterList.isEmpty()) {
+                    this.mLogText += "\t: 키워드 기반 체크\n";
+                    for (String filter : DataStore.aFilterList) {
+                        if (this.item.mTarget.contains(filter)) {
+                            this.mLogText += "\t: 키워드 매칭 성공: " + filter + " → 접수\n";
+                            shouldAccept = true;
+                            break;
                         }
                     }
-                    
-                    if (DataStore.bAutoSkip && this.item.mSkipCtrl != null && this.item.mSkipCtrl.isClickable()) {
-                        Helper.delegateButtonClick(this.item.mSkipCtrl);
-                    }
-                    this.mLogText += "\t: 도착지체크 실패: 거절\n";
-                    return;
                 }
                 
-                if (DataStore.bAutoSkip && this.item.mSkipCtrl != null && this.item.mSkipCtrl.isClickable()) {
-                    Helper.delegateButtonClick(this.item.mSkipCtrl);
+                // 3단계: 결과 처리
+                if (shouldAccept) {
+                    Helper.delegateButtonClick(this.item.mPlayCtrl);
+                    this.mLogText += "\t: 조건 만족 → 수락\n";
+                } else {
+                    this.mLogText += "\t: DB 및 키워드 모두 매칭 실패 → 무시\n";
                 }
-                this.mLogText += "\t: 주소분석 실패: 거절\n";
                 
-            } else if (i3 == Config.MODE_EXCEPT) {  // 제외지 모드
+            } else if (i3 == Config.MODE_EXCEPT) {  // 제외지 모드 (512)
                 if (DataStore.sAllExclusionCodes.isEmpty()) {
                     return;
                 }
@@ -167,12 +195,11 @@ public class WorkerThread implements Runnable {
                 }
                 this.mLogText += "\t: 도착지주소 분석 실패: 거절\n";
                 
-            } else if (i3 == Config.MODE_ALL) {  // 전체콜 모드
-                Logger.log("[WorkerThread] 전체콜 모드 - 자동 수락 버튼 클릭!");
+            } else if (i3 == Config.MODE_ALL) {  // 전체 모드 (768) - 이제 bFullMode로 대체됨
                 Helper.delegateButtonClick(this.item.mPlayCtrl);
                 this.mLogText += "\t: 전체모드: 접수\n";
                 
-            } else if (i3 == Config.MODE_LONGDISTANCE) {  // 장거리 모드
+            } else if (i3 == Config.MODE_LONGDISTANCE) {  // 장거리 모드 (1024)
                 this.mLogText += "\t" + this.item.mSource + " -> " + this.item.mTarget + ": 거리모드 체크 시작\n";
                 
                 // 출발지와 도착지 분석
@@ -217,22 +244,100 @@ public class WorkerThread implements Runnable {
                 
                 // 거리 계산 (DB에서 좌표 조회 후)
                 if (destInfo != null && originInfo != null) {
-                    // 실제 구현시 DB에서 좌표 조회 후 거리 계산
-                    // double distance = calculateDistance(originInfo, destInfo);
-                    // if (distance >= DataStore.nAdvancedQuality) {
-                    //     Helper.delegateButtonClick(this.item.mPlayCtrl);
-                    //     this.mLogText += "\t: 장거리 조건 만족: 접수\n";
-                    // }
-                    this.mLogText += "\t: 장거리 모드 - DB 연동 필요\n";
+                    double distance = calculateDistance(originInfo, destInfo);
+                    this.mLogText += "\t: 계산된 거리: " + String.format("%.1f", distance) + "km\n";
+                    
+                    if (distance >= (DataStore.nAdvancedQuality / 1000.0)) {  // km 단위로 변환
+                        Helper.delegateButtonClick(this.item.mPlayCtrl);
+                        this.mLogText += "\t: 장거리 조건 만족 (" + (DataStore.nAdvancedQuality/1000.0) + "km 이상): 접수\n";
+                        return;
+                    } else {
+                        if (DataStore.bAutoSkip && this.item.mSkipCtrl != null && this.item.mSkipCtrl.isClickable()) {
+                            Helper.delegateButtonClick(this.item.mSkipCtrl);
+                        }
+                        this.mLogText += "\t: 장거리 조건 불만족: 거절\n";
+                        return;
+                    }
+                } else {
+                    this.mLogText += "\t: 주소 분석 실패로 장거리 계산 불가\n";
                 }
-            } else {
-                Logger.log("[WorkerThread] 모드가 설정되지 않음. nMode=" + i3);
-                this.mLogText += "\t: 모드 미설정 - 동작 안함\n";
+                
+            } else {  // MODE_NONE 또는 기타 - 기본 키워드 필터 모드
+                this.mLogText += "\t: 기본 모드 - 키워드 필터 체크\n";
+                
+                // 키워드 필터가 있는 경우 체크
+                if (DataStore.aFilterList != null && !DataStore.aFilterList.isEmpty()) {
+                    boolean matched = false;
+                    for (String filter : DataStore.aFilterList) {
+                        if (this.item.mTarget.contains(filter)) {
+                            matched = true;
+                            this.mLogText += "\t: 키워드 매칭됨: " + filter + " → 접수\n";
+                            break;
+                        }
+                    }
+                    
+                    if (matched) {
+                        Helper.delegateButtonClick(this.item.mPlayCtrl);
+                    } else {
+                        if (DataStore.bAutoSkip && this.item.mSkipCtrl != null && this.item.mSkipCtrl.isClickable()) {
+                            Helper.delegateButtonClick(this.item.mSkipCtrl);
+                        }
+                        this.mLogText += "\t: 키워드 매칭 안됨 → 거절\n";
+                    }
+                } else {
+                    // 키워드 필터가 없으면 기본 수락
+                    Helper.delegateButtonClick(this.item.mPlayCtrl);
+                    this.mLogText += "\t: 키워드 필터 없음 → 기본 접수\n";
+                }
             }
             
         } catch (Exception e) {
             this.mLogText += "\t: 처리 중 오류 발생: " + e.getMessage() + "\n";
             Logger.log(e);
         }
+    }
+    
+    /**
+     * 두 지점 간의 직선거리 계산 (Haversine 공식)
+     */
+    private double calculateDistance(ItemInfo origin, ItemInfo dest) {
+        try {
+            // DB에서 좌표 조회
+            double[] originCoords = DBHelper.getCoordinates(this.context, origin.sDongName, origin.sSigunguName);
+            double[] destCoords = DBHelper.getCoordinates(this.context, dest.sDongName, dest.sSigunguName);
+            
+            // 좌표가 없는 경우
+            if (originCoords[0] == 0.0 && originCoords[1] == 0.0) {
+                return 0.0;
+            }
+            if (destCoords[0] == 0.0 && destCoords[1] == 0.0) {
+                return 0.0;
+            }
+            
+            // Haversine 공식으로 거리 계산
+            return calculateHaversineDistance(originCoords[0], originCoords[1], destCoords[0], destCoords[1]);
+            
+        } catch (Exception e) {
+            Logger.log("거리 계산 실패: " + e.getMessage());
+            return 0.0;
+        }
+    }
+    
+    /**
+     * Haversine 공식을 이용한 두 좌표 간 거리 계산 (km 단위)
+     */
+    private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371; // 지구 반지름 (km)
+        
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        
+        return R * c; // km 단위로 반환
     }
 }

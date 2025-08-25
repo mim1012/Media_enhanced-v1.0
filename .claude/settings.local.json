@@ -14,7 +14,8 @@
       "Bash(rm:*)",
       "Bash(gradlew.bat assembleDebug:*)",
       "Bash(adb:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

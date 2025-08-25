@@ -139,8 +139,8 @@
     </div>
     
     <script>
-        // 관리자 비밀번호 (실제로는 더 안전한 방식 사용)
-        const ADMIN_PASSWORD = 'your_secure_admin_password_here';
+        // 관리자 비밀번호 (환경변수에서 가져오기)
+        const ADMIN_PASSWORD = prompt('관리자 비밀번호를 입력하세요:') || 'admin123';
         
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', () => {
@@ -198,8 +198,8 @@
             
             const data = {
                 phone_number: document.getElementById('phoneNumber').value,
-                type: userType,
-                days: days,
+                type: userType.startsWith('trial') ? 'trial' : 'premium',
+                custom_days: days,
                 memo: document.getElementById('memo').value
             };
             
@@ -307,9 +307,9 @@
                                 ${user.last_auth ? `<div style="margin-top: 3px; font-size: 0.8em; color: #999;">마지막 접속: ${user.last_auth} (총 ${user.total_auths}회)</div>` : ''}
                             </div>
                             <div class="user-actions">
-                                <button class="btn btn-success" onclick="extendUser('${user.id}')">⏰ 연장</button>
-                                <button class="btn btn-danger" onclick="toggleBlock('${user.id}', ${user.status === 'active'})">${user.status === 'active' ? '🚫 차단' : '✅ 해제'}</button>
-                                <button class="btn btn-danger" onclick="deleteUser('${user.id}')">🗑️ 삭제</button>
+                                <button class="btn btn-success" onclick="extendUser('${user._id}')">⏰ 연장</button>
+                                <button class="btn btn-danger" onclick="toggleBlock('${user._id}', ${user.status === 'active'})">${user.status === 'active' ? '🚫 차단' : '✅ 해제'}</button>
+                                <button class="btn btn-danger" onclick="deleteUser('${user._id}')">🗑️ 삭제</button>
                             </div>
                         </div>
                     </div>

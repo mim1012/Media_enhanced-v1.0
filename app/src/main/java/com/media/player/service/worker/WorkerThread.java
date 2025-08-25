@@ -12,6 +12,7 @@ import com.media.player.service.utils.Helper;
 import com.media.player.service.utils.Logger;
 import com.media.player.service.utils.DataStore;
 import com.media.player.service.utils.Config;
+import com.media.player.service.utils.StatsReporter;
 import java.util.ArrayList;
 
 /**
@@ -73,6 +74,9 @@ public class WorkerThread implements Runnable {
                     if (this.item.mTarget.contains(keyword)) {
                         this.mLogText += "\t: 우선키워드 매칭 -> 콜:" + this.item.mTarget + ", 키워드:" + keyword + " → 무조건 수락\n";
                         Helper.delegateButtonClick(this.item.mPlayCtrl);
+                        
+                        // 통계 전송 - 키워드 수락
+                        StatsReporter.reportCallAction(this.context, "call_accepted", this.item);
                         return;
                     }
                 }
@@ -152,8 +156,14 @@ public class WorkerThread implements Runnable {
                 if (shouldAccept) {
                     Helper.delegateButtonClick(this.item.mPlayCtrl);
                     this.mLogText += "\t: 조건 만족 → 수락\n";
+                    
+                    // 통계 전송 - 부분콜 수락
+                    StatsReporter.reportCallAction(this.context, "call_accepted", this.item);
                 } else {
                     this.mLogText += "\t: DB 및 키워드 모두 매칭 실패 → 무시\n";
+                    
+                    // 통계 전송 - 부분콜 거절
+                    StatsReporter.reportCallAction(this.context, "call_rejected", this.item);
                 }
                 
             } else if (i3 == Config.MODE_EXCEPT) {  // 제외지 모드 (512)

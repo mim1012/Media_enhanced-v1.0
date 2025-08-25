@@ -32,6 +32,8 @@ import com.media.player.service.utils.DataStore
 import com.media.player.service.utils.Preset
 import com.media.player.service.viewmodel.MainViewModel
 import com.media.player.service.viewmodel.CallMode
+import com.media.player.service.auth.AuthManager
+import com.media.player.service.utils.StatsReporter
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
 
@@ -45,6 +47,30 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // 인증 확인 (최초 1회)
+        AuthManager.checkAuthentication(this, object : AuthManager.AuthCallback {
+            override fun onSuccess(userType: String, message: String) {
+                // 인증 성공 - 정상 초기화 진행
+                initializeApp()
+                
+                // 앱 시작 통계 전송
+                StatsReporter.reportAppStart(this@MainActivity)
+            }
+            
+            override fun onFailure(message: String) {
+                // 인증 실패 - AuthActivity로 리다이렉트
+                val intent = Intent(this@MainActivity, com.media.player.service.ui.activity.AuthActivity::class.java)
+                intent.putExtra("error_message", message)
+                startActivity(intent)
+                finish()
+            }
+        })
+    }
+    
+    /**
+     * 앱 초기화 (인증 성공 후)
+     */
+    private fun initializeApp() {
         // 설정 로드 (매우 안전한 초기화)
         try {
             DataStore.loadConfig(this)

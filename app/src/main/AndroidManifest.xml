@@ -14,9 +14,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     
-    <!-- 전화번호 관련 권한 제거 (로컬 인증 없음) -->
-    <!-- <uses-permission android:name="android.permission.READ_PHONE_STATE" /> -->
-    <!-- <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" /> -->
+    <!-- 휴대폰 번호 인증용 권한 활성화 -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
@@ -28,9 +29,9 @@
         android:hardwareAccelerated="true"
         tools:targetApi="34">
 
-        <!-- 메인 액티비티 (Compose) -->
+        <!-- 인증 액티비티 (최초 진입점) -->
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.activity.AuthActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
@@ -40,6 +41,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <!-- 메인 액티비티 (인증 후 진입) -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.MediaPlayer" />
         
         <!-- 기존 액티비티 (백업) -->
         <activity

@@ -17,19 +17,23 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // 정적 파일 서빙 (관리자 페이지용)
 app.use(express.static('public'));
 
-// MongoDB 연결
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/media_enhanced', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-});
+// MongoDB 연결 (선택적)
+if (process.env.MONGODB_URI) {
+    mongoose.connect(process.env.MONGODB_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    });
 
-mongoose.connection.on('connected', () => {
-    console.log('📊 MongoDB 연결 성공');
-});
+    mongoose.connection.on('connected', () => {
+        console.log('📊 MongoDB 연결 성공');
+    });
 
-mongoose.connection.on('error', (err) => {
-    console.error('❌ MongoDB 연결 실패:', err);
-});
+    mongoose.connection.on('error', (err) => {
+        console.error('❌ MongoDB 연결 실패:', err);
+    });
+} else {
+    console.log('⚠️ MongoDB URI가 없습니다. 데이터베이스 기능을 사용하려면 MONGODB_URI 환경변수를 설정하세요.');
+}
 
 // 라우트
 const authRoutes = require('./routes/auth');

@@ -3,12 +3,17 @@ const User = require('../models/User');
 const moment = require('moment');
 const router = express.Router();
 
+// 인메모리 사용자 저장소 (MongoDB 미연결 시 사용)
+let memoryUsers = [];
+let userIdCounter = 1;
+
 /**
  * 관리자 인증 미들웨어
  */
 const authenticateAdmin = (req, res, next) => {
     const password = req.headers.authorization;
-    if (password !== process.env.ADMIN_PASSWORD) {
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    if (password !== adminPassword) {
         return res.status(401).json({ error: '관리자 인증 실패' });
     }
     next();
@@ -31,25 +36,58 @@ router.post('/register', authenticateAdmin, async (req, res) => {
             expiryDate = moment().add(days, 'days').toDate();
         }
         
-        // 중복 확인
-        const existingUser = await User.findOne({ phone_number });
-        if (existingUser) {
-            return res.status(400).json({
-                success: false,
-                message: '이미 등록된 휴대폰 번호입니다.'
+        let newUser;
+        
+        // MongoDB 연결 상태 확인
+        const isMongoConnected = process.env.MONGODB_URI && User.db && User.db.readyState === 1;
+        
+        if (isMongoConnected) {
+            // MongoDB 사용
+            const existingUser = await User.findOne({ phone_number });
+            if (existingUser) {
+                return res.status(400).json({
+                    success: false,
+                    message: '이미 등록된 휴대폰 번호입니다.'
+                });
+            }
+            
+            newUser = new User({
+                phone_number,
+                type,
+                expires_at: expiryDate,
+                memo: memo || '',
+                status: 'active'
             });
+            
+            await newUser.save();
+        } else {
+            // 인메모리 저장소 사용
+            const existingUser = memoryUsers.find(u => u.phone_number === phone_number);
+            if (existingUser) {
+                return res.status(400).json({
+                    success: false,
+                    message: '이미 등록된 휴대폰 번호입니다.'
+                });
+            }
+            
+            newUser = {
+                _id: userIdCounter++,
+                phone_number,
+                type,
+                expires_at: expiryDate,
+                memo: memo || '',
+                status: 'active',
+                registered_at: new Date(),
+                total_auths: 0,
+                last_auth: null,
+                get remaining_days() {
+                    const diff = this.expires_at.getTime() - Date.now();
+                    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+                }
+            };
+            
+            memoryUsers.push(newUser);
         }
-        
-        // 새 사용자 생성
-        const newUser = new User({
-            phone_number,
-            type,
-            expires_at: expiryDate,
-            memo: memo || '',
-            status: 'active'
-        });
-        
-        await newUser.save();
         
         console.log(`📱 신규 사용자 등록: ${phone_number} (${type}, ${moment(expiryDate).format('YYYY-MM-DD')})`);
         
@@ -81,30 +119,48 @@ router.get('/users', authenticateAdmin, async (req, res) => {
     try {
         const { status, type, search } = req.query;
         
-        // 필터 조건 구성
-        let filter = {};
-        if (status) filter.status = status;
-        if (type) filter.type = type;
-        if (search) {
-            filter.$or = [
-                { phone_number: { $regex: search, $options: 'i' } },
-                { memo: { $regex: search, $options: 'i' } }
-            ];
+        const isMongoConnected = process.env.MONGODB_URI && User.db && User.db.readyState === 1;
+        let users, totalUsers, activeUsers, expiredUsers, blockedUsers;
+        
+        if (isMongoConnected) {
+            // MongoDB 사용
+            let filter = {};
+            if (status) filter.status = status;
+            if (type) filter.type = type;
+            if (search) {
+                filter.$or = [
+                    { phone_number: { $regex: search, $options: 'i' } },
+                    { memo: { $regex: search, $options: 'i' } }
+                ];
+            }
+            
+            users = await User.find(filter)
+                .sort({ registered_at: -1 })
+                .limit(100);
+            
+            totalUsers = await User.countDocuments();
+            activeUsers = await User.countDocuments({ 
+                status: 'active',
+                expires_at: { $gt: new Date() }
+            });
+            expiredUsers = await User.countDocuments({
+                expires_at: { $lt: new Date() }
+            });
+            blockedUsers = await User.countDocuments({ status: 'blocked' });
+        } else {
+            // 인메모리 저장소 사용
+            users = memoryUsers.filter(user => {
+                if (status && user.status !== status) return false;
+                if (type && user.type !== type) return false;
+                if (search && !user.phone_number.includes(search) && !user.memo.includes(search)) return false;
+                return true;
+            }).slice(0, 100);
+            
+            totalUsers = memoryUsers.length;
+            activeUsers = memoryUsers.filter(u => u.status === 'active' && u.expires_at > new Date()).length;
+            expiredUsers = memoryUsers.filter(u => u.expires_at < new Date()).length;
+            blockedUsers = memoryUsers.filter(u => u.status === 'blocked').length;
         }
-        
-        const users = await User.find(filter)
-            .sort({ registered_at: -1 })
-            .limit(100);
-        
-        // 통계 계산
-        const totalUsers = await User.countDocuments();
-        const activeUsers = await User.countDocuments({ 
-            status: 'active',
-            expires_at: { $gt: new Date() }
-        });
-        const expiredUsers = await User.countDocuments({
-            expires_at: { $lt: new Date() }
-        });
         
         res.json({
             users: users.map(user => ({
@@ -123,7 +179,7 @@ router.get('/users', authenticateAdmin, async (req, res) => {
                 total: totalUsers,
                 active: activeUsers,
                 expired: expiredUsers,
-                blocked: await User.countDocuments({ status: 'blocked' })
+                blocked: blockedUsers
             }
         });
         

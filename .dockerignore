@@ -1,0 +1,21 @@
+# Android 관련 파일들 제외
+app/
+gradle/
+gradlew*
+*.gradle
+gradle.properties
+local.properties
+*.apk
+*.aab
+build/
+.gradle/
+
+# 기타 불필요한 파일들
+.git/
+.gitignore
+*.md
+node_modules/
+npm-debug.log*
+.env
+.vscode/
+.idea/

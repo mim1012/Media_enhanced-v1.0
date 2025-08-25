@@ -1,9 +1,10 @@
 const express = require('express');
 const User = require('../models/User');
+const { UserPostgres, pool } = require('../models/UserPostgres');
 const moment = require('moment');
 const router = express.Router();
 
-// 인메모리 사용자 저장소 (MongoDB 미연결 시 사용)
+// 인메모리 사용자 저장소 (데이터베이스 미연결 시 사용)
 let memoryUsers = [];
 let userIdCounter = 1;
 
@@ -38,11 +39,36 @@ router.post('/register', authenticateAdmin, async (req, res) => {
         
         let newUser;
         
-        // MongoDB 연결 상태 확인
+        // 데이터베이스 연결 상태 확인 (PostgreSQL 우선, MongoDB 백업, 인메모리 최후)
+        const isPostgresConnected = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
         const isMongoConnected = process.env.MONGODB_URI && User.db && User.db.readyState === 1;
         
-        if (isMongoConnected) {
-            // MongoDB 사용
+        if (isPostgresConnected) {
+            try {
+                // PostgreSQL 사용
+                const existingUser = await UserPostgres.findOne({ phone_number });
+                if (existingUser) {
+                    return res.status(400).json({
+                        success: false,
+                        message: '이미 등록된 휴대폰 번호입니다.'
+                    });
+                }
+                
+                newUser = await UserPostgres.create({
+                    phone_number,
+                    type,
+                    expires_at: expiryDate,
+                    memo: memo || '',
+                    status: 'active'
+                });
+            } catch (error) {
+                console.error('PostgreSQL 오류, MongoDB/인메모리로 fallback:', error);
+                // PostgreSQL 실패 시 아래 로직으로 fallback
+            }
+        }
+        
+        if (!newUser && isMongoConnected) {
+            // MongoDB 백업 사용
             const existingUser = await User.findOne({ phone_number });
             if (existingUser) {
                 return res.status(400).json({
@@ -60,8 +86,10 @@ router.post('/register', authenticateAdmin, async (req, res) => {
             });
             
             await newUser.save();
-        } else {
-            // 인메모리 저장소 사용
+        }
+        
+        if (!newUser) {
+            // 인메모리 저장소 사용 (최후의 수단)
             const existingUser = memoryUsers.find(u => u.phone_number === phone_number);
             if (existingUser) {
                 return res.status(400).json({
@@ -72,6 +100,7 @@ router.post('/register', authenticateAdmin, async (req, res) => {
             
             newUser = {
                 _id: userIdCounter++,
+                id: userIdCounter - 1,
                 phone_number,
                 type,
                 expires_at: expiryDate,
@@ -119,10 +148,43 @@ router.get('/users', authenticateAdmin, async (req, res) => {
     try {
         const { status, type, search } = req.query;
         
+        const isPostgresConnected = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
         const isMongoConnected = process.env.MONGODB_URI && User.db && User.db.readyState === 1;
         let users, totalUsers, activeUsers, expiredUsers, blockedUsers;
         
-        if (isMongoConnected) {
+        if (isPostgresConnected) {
+            try {
+                // PostgreSQL 사용
+                let filter = {};
+                if (status) filter.status = status;
+                if (type) filter.type = type;
+                if (search) {
+                    filter.$or = [
+                        { phone_number: { $regex: search } },
+                        { memo: { $regex: search } }
+                    ];
+                }
+                
+                users = await UserPostgres.find(filter, { 
+                    sort: { registered_at: -1 }, 
+                    limit: 100 
+                });
+                
+                totalUsers = await UserPostgres.countDocuments();
+                activeUsers = await UserPostgres.countDocuments({ 
+                    status: 'active',
+                    expires_at: { $gt: new Date() }
+                });
+                expiredUsers = await UserPostgres.countDocuments({
+                    expires_at: { $lt: new Date() }
+                });
+                blockedUsers = await UserPostgres.countDocuments({ status: 'blocked' });
+            } catch (error) {
+                console.error('PostgreSQL 조회 오류, fallback:', error);
+            }
+        }
+        
+        if (!users && isMongoConnected) {
             // MongoDB 사용
             let filter = {};
             if (status) filter.status = status;
@@ -147,8 +209,10 @@ router.get('/users', authenticateAdmin, async (req, res) => {
                 expires_at: { $lt: new Date() }
             });
             blockedUsers = await User.countDocuments({ status: 'blocked' });
-        } else {
-            // 인메모리 저장소 사용
+        }
+        
+        if (!users) {
+            // 인메모리 저장소 사용 (최후의 수단)
             users = memoryUsers.filter(user => {
                 if (status && user.status !== status) return false;
                 if (type && user.type !== type) return false;
@@ -164,7 +228,7 @@ router.get('/users', authenticateAdmin, async (req, res) => {
         
         res.json({
             users: users.map(user => ({
-                _id: user._id,
+                _id: user._id || user.id,
                 phone_number: user.phone_number,
                 type: user.type,
                 registered_at: moment(user.registered_at).format('MM-DD'),
@@ -173,7 +237,7 @@ router.get('/users', authenticateAdmin, async (req, res) => {
                 status: user.status,
                 memo: user.memo,
                 last_auth: user.last_auth ? moment(user.last_auth).fromNow() : '없음',
-                total_auths: user.total_auths
+                total_auths: user.total_auths || 0
             })),
             summary: {
                 total: totalUsers,

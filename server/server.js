@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const { initializeDatabase } = require('./models/UserPostgres');
 require('dotenv').config();
 
 const app = express();
@@ -17,23 +18,39 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // 정적 파일 서빙 (관리자 페이지용)
 app.use(express.static('public'));
 
-// MongoDB 연결 (선택적)
-if (process.env.MONGODB_URI) {
-    mongoose.connect(process.env.MONGODB_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true
-    });
+// 데이터베이스 연결 설정
+async function connectDatabase() {
+    // Supabase PostgreSQL 연결 시도
+    if (process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL) {
+        try {
+            await initializeDatabase();
+            console.log('📊 Supabase PostgreSQL 연결 성공');
+            return;
+        } catch (error) {
+            console.error('❌ PostgreSQL 연결 실패:', error);
+        }
+    }
+    
+    // MongoDB 백업 연결 (선택적)
+    if (process.env.MONGODB_URI) {
+        mongoose.connect(process.env.MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
+        });
 
-    mongoose.connection.on('connected', () => {
-        console.log('📊 MongoDB 연결 성공');
-    });
+        mongoose.connection.on('connected', () => {
+            console.log('📊 MongoDB 연결 성공');
+        });
 
-    mongoose.connection.on('error', (err) => {
-        console.error('❌ MongoDB 연결 실패:', err);
-    });
-} else {
-    console.log('⚠️ MongoDB URI가 없습니다. 데이터베이스 기능을 사용하려면 MONGODB_URI 환경변수를 설정하세요.');
+        mongoose.connection.on('error', (err) => {
+            console.error('❌ MongoDB 연결 실패:', err);
+        });
+    } else {
+        console.log('⚠️ 데이터베이스 URI가 없습니다. 인메모리 저장소를 사용합니다.');
+    }
 }
+
+connectDatabase();
 
 // 라우트
 const authRoutes = require('./routes/auth');
